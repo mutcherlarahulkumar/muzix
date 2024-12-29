@@ -78,7 +78,7 @@ router.post('/rooms/:roomId/songs',authMiddleware,async(req,res)=>{
   
   // .catch((error) => console.error(error));
   //
-  console.log(title,thumburl);
+  // console.log(title,thumburl);
   try {
     const room = await Room.findById(roomId);
     if (!room) {
@@ -136,6 +136,7 @@ router.get('/rooms/:roomId/songs', authMiddleware, async (req, res) => {
           link: 1,
           upvotes: 1,
           voters: 1,
+          thumburl: 1,
         },
       },
       { $sort: { upvotes: -1 } }, // Sort songs by upvotes in descending order

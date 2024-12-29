@@ -22,8 +22,8 @@ export const fetchVideoDetails = async (url) => {
 
   if (data.items && data.items.length > 0) {
     const { title } = data.items[0].snippet;
-    const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-    return { title, thumbnailUrl };
+    const thumburl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    return { title, thumburl };
   } else {
     throw new Error("Video not found");
   }

@@ -6,12 +6,23 @@ export default function Dashboard(){
     const [link,setLink] = useState('');
     const room_id = localStorage.getItem("roomid");
     const token = localStorage.getItem("token");
-
-
+    const [data,setData] = useState([]);
 
 
     
-
+    useEffect(()=>{
+        axios.get(`http://localhost:3000/api/user/rooms/${room_id}/songs`,{
+            headers:{
+                "Authorization":`Bearer ${token}`
+            }
+        })
+        .then((response)=>{
+            setData(response.data);
+        })
+        .catch((error)=>{
+            console.log(error);
+        })
+    },[]);
 
 
 
@@ -53,10 +64,14 @@ export default function Dashboard(){
             <div className="h-screen w-1/2 border ">
                 <div>All Songs</div>
                 <div>
-                    <SongCard />
+                    {
+                        data.map((item)=>(
+                            <SongCard key={item.id} item={item} />
+                        ))
+                    }
                 </div>
             </div>
-            <div className="h-screen border px-12 mx-10 w-1/2">
+            <div className="h-screen border px-5 mx-10 w-1/2">
                 <div>Current Song</div>
                 <iframe width="560" height="315" src="https://www.youtube.com/embed/7lFAh_BR3_E?si=auXQvk33V8e8NkX6" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
             </div>
