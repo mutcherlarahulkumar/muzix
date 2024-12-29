@@ -67,7 +67,7 @@ router.get('/rooms/:roomId',authMiddleware,async(req,res)=>{
 
 router.post('/rooms/:roomId/songs',authMiddleware,async(req,res)=>{
     //  Add a new song to the room (admin only)
-    const { roomId } = req.params;
+  const { roomId } = req.params;
   const { link } = req.body;
   //send link and somehow get thumburl and title
   const data = await fetchVideoDetails(link);
@@ -151,7 +151,7 @@ router.get('/rooms/:roomId/songs', authMiddleware, async (req, res) => {
 
 router.post('/rooms/:roomId/songs/:songId/upvote', authMiddleware, async (req, res) => {
   const { roomId, songId } = req.params;
-
+  // console.log("here");
   try {
     const song = await Song.findById(songId);
     if (!song) {

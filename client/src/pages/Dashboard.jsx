@@ -8,6 +8,8 @@ export default function Dashboard(){
     const token = localStorage.getItem("token");
     const [data,setData] = useState([]);
 
+    const [roomdetails,setRoomDetails] = useState({});
+
 
     
     useEffect(()=>{
@@ -22,7 +24,21 @@ export default function Dashboard(){
         .catch((error)=>{
             console.log(error);
         })
-    },[]);
+
+        //fetch roomdetails
+        axios.get(`http://localhost:3000/api/user/rooms/${room_id}`,{
+            headers:{
+                "Authorization":`Bearer ${token}`
+            }
+        })
+        .then((response)=>{
+            setRoomDetails(response.data);
+            console.log(response.data);
+        })
+        .catch((error)=>{
+            console.log(error);
+        })
+    },[link]);
 
 
 
@@ -33,12 +49,16 @@ export default function Dashboard(){
             <div className="text-3xl text-center font-semibold p-8">DashBoard</div>
         </div>
         <div className="flex justify-evenly p-9">
-            <div className=" w-1/2  text-5xl">Room Name here</div>
+            <div className=" w-1/2  text-5xl">Welcome to Room : {roomdetails.roomName}</div>
             <div className="  px-12 mx-10 text-center">
+            {
+                <div>
             <div>Add Youtube Link</div>
             <input type="text" id="username" name="username" className="text-black mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onChange={(e)=>{
                                 setLink(e.target.value);
                             }} required/>
+            </div>
+            }
             <div className=" text-center rounded-lg p-3  text-red-400   hover:cursor-pointer font-semibold" onClick={()=>{
                 axios.post(`http://localhost:3000/api/user/rooms/${room_id}/songs`,{
                         link : link
