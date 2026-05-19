@@ -18,13 +18,13 @@ const AVATAR_COLORS = ["#8b5cf6", "#ec4899", "#06b6d4", "#f59e0b", "#10b981", "#
 const avatarColor = (str = "") => AVATAR_COLORS[str.charCodeAt(0) % AVATAR_COLORS.length];
 
 // ── Video tile for a single participant ──────────────────────────────────────
-function VideoTile({ stream, username, local, deafened }) {
+function VideoTile({ stream, username, local, deafened, large }) {
   const vidRef = useRef(null);
   useEffect(() => {
     if (vidRef.current && stream) vidRef.current.srcObject = stream;
   }, [stream]);
   return (
-    <div className="relative flex-shrink-0 w-36 h-24 rounded-xl overflow-hidden bg-muzix-surface border border-white/10 group">
+    <div className={`relative flex-shrink-0 overflow-hidden bg-muzix-surface border border-white/10 rounded-xl ${large ? 'w-full h-full' : 'w-36 h-24'}`}>
       <video
         ref={vidRef}
         autoPlay
@@ -33,7 +33,7 @@ function VideoTile({ stream, username, local, deafened }) {
         className="w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-      <span className="absolute bottom-1.5 left-2 text-[10px] font-semibold text-white/90 truncate max-w-[120px]">
+      <span className={`absolute bottom-2 left-2 font-semibold text-white/90 truncate ${large ? 'text-sm max-w-[200px]' : 'text-[10px] max-w-[120px]'}`}>
         {local ? "You" : username}
       </span>
     </div>
@@ -73,6 +73,7 @@ export default function Dashboard() {
   const [camOn, setCamOn] = useState(true);
   const [deafened, setDeafened] = useState(false);
   const [peers, setPeers] = useState({}); // { socketId: { stream, username } }
+  const [spotlight, setSpotlight] = useState(null); // null | 'youtube' | 'self' | socketId
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const socketRef = useRef(null);
@@ -313,6 +314,8 @@ export default function Dashboard() {
 
       playerCreatedRef.current = true;
       playerRef.current = new window.YT.Player("yt-player", {
+        width: "100%",
+        height: "100%",
         videoId,
         playerVars: { autoplay: 1, rel: 0, modestbranding: 1, controls: 1 },
         events: {
@@ -371,6 +374,7 @@ export default function Dashboard() {
     remoteAudioRefs.current = {};
     setPeers({});
     socketRef.current?.emit("webrtc:hangup", {});
+    setSpotlight(null);
     setInCall(false);
   };
 
@@ -488,47 +492,138 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── Player + Queue grid ────────────────────────────────────────── */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 overflow-hidden">
+          {/* ── Player + Queue ───────────────────────────────────────────────── */}
+          <div className="flex-1 flex gap-4 p-4 overflow-hidden">
 
-            {/* Player */}
-            <div className="bg-muzix-card border border-white/8 rounded-2xl p-4 flex flex-col overflow-hidden">
-              <p className="flex-shrink-0 text-xs font-semibold text-muzix-muted uppercase tracking-widest mb-3">
-                Now Playing
-                {!isAdmin && videoId && <span className="ml-2 text-muzix-purple">• synced</span>}
-              </p>
+            {/* ── Left: Stage + YT player + thumbnail strip ──────────────── */}
+            <div className="flex-1 flex flex-col gap-3 min-h-0 overflow-hidden">
 
-              {videoId ? (
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="rounded-xl overflow-hidden bg-black aspect-video w-full">
-                    <div id="yt-player" className="w-full h-full" />
-                  </div>
-                  <div className="mt-3 flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white leading-tight line-clamp-2">{topSong?.title}</p>
-                      <p className="text-xs text-muzix-muted mt-0.5">{isAdmin ? "You control playback for everyone" : "Synced to admin"}</p>
-                    </div>
-                    <span className="flex-shrink-0 text-xs font-bold text-muzix-purple bg-muzix-purple/10 border border-muzix-purple/20 rounded-full px-2.5 py-1">
-                      ▲ {topSong?.upvotes}
-                    </span>
+              {/* Spotlighted PEER (stage) */}
+              {inCall && spotlight && spotlight !== 'youtube' && (
+                <div className="flex-1 min-h-0 relative rounded-2xl overflow-hidden bg-black border border-white/8">
+                  {spotlight === 'self' && selfStream &&
+                    <VideoTile stream={selfStream} username={username} local large />}
+                  {spotlight !== 'self' && peers[spotlight] &&
+                    <VideoTile stream={peers[spotlight].stream} username={peers[spotlight].username} deafened={deafened} large />}
+                  <button
+                    onClick={() => setSpotlight(null)}
+                    className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-black/70 hover:bg-black/90 border border-white/20 rounded-lg px-2.5 py-1.5 text-xs text-white transition-all"
+                  >✕ Unpin</button>
+                  <div className="absolute top-3 left-3 z-10 bg-black/60 rounded-lg px-2 py-1 text-xs text-white/80">
+                    📌 {spotlight === 'self' ? 'You' : peers[spotlight]?.username}
                   </div>
                 </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
-                  <span className="text-6xl mb-3 animate-float">🎵</span>
-                  <p className="text-slate-400 text-sm">No songs in the queue yet.</p>
-                  {!isAdmin && <p className="text-muzix-muted text-xs mt-1">The admin will add songs to get started.</p>}
+              )}
+
+              {/* YouTube player card — ALWAYS at same React tree position, size adapts via CSS */}
+              {(() => {
+                const isThumb = !!(inCall && spotlight && spotlight !== 'youtube');
+                const isStage = !!(inCall && spotlight === 'youtube');
+                return (
+                  <div className={`relative rounded-2xl overflow-hidden bg-muzix-card border border-white/8 transition-all duration-300
+                    ${isThumb ? 'flex-shrink-0 h-[72px] cursor-pointer hover:border-muzix-purple/40' : 'flex flex-col'}
+                    ${isStage ? 'flex-1 min-h-0' : ''}
+                  `}>
+                    {/* Thumbnail overlay — covers the player visually when in thumb mode */}
+                    {isThumb && (
+                      <div
+                        className="absolute inset-0 z-10 flex items-center gap-3 px-3 bg-muzix-card"
+                        onClick={() => setSpotlight('youtube')}
+                      >
+                        {topSong?.thumburl
+                          ? <img src={topSong.thumburl} className="w-16 h-11 object-cover rounded-lg flex-shrink-0" />
+                          : <div className="w-16 h-11 bg-muzix-surface rounded-lg flex items-center justify-center text-lg flex-shrink-0">🎵</div>
+                        }
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-white truncate">{topSong?.title || 'No song playing'}</p>
+                          <p className="text-[10px] text-muzix-muted">Click to pin player</p>
+                        </div>
+                        <span className="text-muzix-purple text-sm flex-shrink-0">📌</span>
+                      </div>
+                    )}
+
+                    {/* Full player content — hidden when thumbnail but always in DOM so YT API survives */}
+                    <div className={`${isThumb ? 'opacity-0 pointer-events-none h-0 overflow-hidden' : 'p-4 flex flex-col h-full'}`}>
+                      <div className="flex-shrink-0 flex items-center justify-between mb-3">
+                        <p className="text-xs font-semibold text-muzix-muted uppercase tracking-widest">
+                          Now Playing
+                          {!isAdmin && videoId && <span className="ml-2 text-muzix-purple">• synced</span>}
+                        </p>
+                        {inCall && videoId && !spotlight && (
+                          <button
+                            onClick={() => setSpotlight('youtube')}
+                            className="text-[10px] bg-white/5 hover:bg-muzix-purple/20 border border-white/10 hover:border-muzix-purple/40 rounded-lg px-2 py-1 text-muzix-muted hover:text-muzix-purple transition-all"
+                          >📌 Pin</button>
+                        )}
+                        {isStage && (
+                          <button
+                            onClick={() => setSpotlight(null)}
+                            className="flex items-center gap-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-xs text-muzix-muted hover:text-white transition-all"
+                          >✕ Unpin</button>
+                        )}
+                      </div>
+
+                      {videoId ? (
+                        <div className="flex-1 flex flex-col min-h-0">
+                          <div className={`rounded-xl overflow-hidden bg-black ${isStage ? 'flex-1 min-h-0' : 'aspect-video w-full'}`}>
+                            <div id="yt-player" className="w-full h-full" />
+                          </div>
+                          {!isStage && (
+                            <div className="mt-3 flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-white leading-tight line-clamp-2">{topSong?.title}</p>
+                                <p className="text-xs text-muzix-muted mt-0.5">{isAdmin ? "You control playback for everyone" : "Synced to admin"}</p>
+                              </div>
+                              <span className="flex-shrink-0 text-xs font-bold text-muzix-purple bg-muzix-purple/10 border border-muzix-purple/20 rounded-full px-2.5 py-1">▲ {topSong?.upvotes}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
+                          <span className="text-6xl mb-3 animate-float">🎵</span>
+                          <p className="text-slate-400 text-sm">No songs in the queue yet.</p>
+                          {!isAdmin && <p className="text-muzix-muted text-xs mt-1">The admin will add songs to get started.</p>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Thumbnail strip — all non-spotlighted tiles when something is pinned */}
+              {inCall && spotlight && (
+                <div className="flex-shrink-0 flex gap-2 overflow-x-auto pb-1">
+                  {peerEntries
+                    .filter(([id]) => id !== spotlight)
+                    .map(([id, { stream, username: peerName }]) => (
+                      <div
+                        key={id}
+                        className="flex-shrink-0 cursor-pointer rounded-xl ring-transparent hover:ring-2 ring-muzix-purple transition-all"
+                        onClick={() => setSpotlight(id)}
+                        title={`Pin ${peerName}`}
+                      >
+                        <VideoTile stream={stream} username={peerName} deafened={deafened} />
+                      </div>
+                    ))}
+                  {spotlight !== 'self' && selfStream && (
+                    <div
+                      className="flex-shrink-0 cursor-pointer rounded-xl ring-transparent hover:ring-2 ring-muzix-purple transition-all"
+                      onClick={() => setSpotlight('self')}
+                      title="Pin yourself"
+                    >
+                      <VideoTile stream={selfStream} username={username} local />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Queue */}
-            <div className="bg-muzix-card border border-white/8 rounded-2xl p-4 flex flex-col overflow-hidden">
+            {/* ── Right: Queue ────────────────────────────────────────────── */}
+            <div className={`bg-muzix-card border border-white/8 rounded-2xl p-4 flex flex-col overflow-hidden flex-shrink-0 ${inCall && spotlight ? 'w-64 xl:w-72' : 'w-full lg:w-[48%]'}`}>
               <div className="flex-shrink-0 flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-muzix-muted uppercase tracking-widest">Queue</p>
                 <span className="text-xs text-muzix-muted">{songs.length} song{songs.length !== 1 ? "s" : ""}</span>
               </div>
-
               {songs.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center">
                   <span className="text-4xl mb-3">🎶</span>
@@ -559,38 +654,27 @@ export default function Dashboard() {
                 </button>
               ) : (
                 <>
-                  {/* Local preview */}
-                  {selfStream && <VideoTile stream={selfStream} username={username} local />}
-
-                  {/* Remote peers */}
-                  {peerEntries.map(([id, { stream, username: peerName }]) => (
-                    <VideoTile key={id} stream={stream} username={peerName} deafened={deafened} />
-                  ))}
+                  {/* When not in spotlight, show small tiles inline in the bar */}
+                  {!spotlight && (
+                    <>
+                      {selfStream && (
+                        <div className="cursor-pointer rounded-xl ring-transparent hover:ring-2 ring-muzix-purple transition-all" onClick={() => setSpotlight('self')}>
+                          <VideoTile stream={selfStream} username={username} local />
+                        </div>
+                      )}
+                      {peerEntries.map(([id, { stream, username: peerName }]) => (
+                        <div key={id} className="cursor-pointer rounded-xl ring-transparent hover:ring-2 ring-muzix-purple transition-all" onClick={() => setSpotlight(id)}>
+                          <VideoTile stream={stream} username={peerName} deafened={deafened} />
+                        </div>
+                      ))}
+                    </>
+                  )}
 
                   {/* Controls */}
-                  <div className="flex items-center gap-2 ml-auto">
-                    <ControlBtn
-                      on={micOn}
-                      onLabel="🎙️"
-                      offLabel="🔇"
-                      onClick={toggleMic}
-                      tooltip={micOn ? "Mute mic" : "Unmute mic"}
-                    />
-                    <ControlBtn
-                      on={camOn}
-                      onLabel="📷"
-                      offLabel="📷"
-                      onClick={toggleCam}
-                      tooltip={camOn ? "Turn off camera" : "Turn on camera"}
-                      offStyle
-                    />
-                    <ControlBtn
-                      on={!deafened}
-                      onLabel="🔊"
-                      offLabel="🔕"
-                      onClick={toggleDeafen}
-                      tooltip={deafened ? "Undeafen" : "Deafen"}
-                    />
+                  <div className="flex items-center gap-2">
+                    <ControlBtn on={micOn} onLabel="🎙️" offLabel="🔇" onClick={toggleMic} tooltip={micOn ? "Mute mic" : "Unmute mic"} />
+                    <ControlBtn on={camOn} onLabel="📷" offLabel="📷" onClick={toggleCam} tooltip={camOn ? "Turn off camera" : "Turn on camera"} offStyle />
+                    <ControlBtn on={!deafened} onLabel="🔊" offLabel="🔕" onClick={toggleDeafen} tooltip={deafened ? "Undeafen" : "Deafen"} />
                     <button
                       onClick={leaveCall}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-all"
@@ -603,7 +687,7 @@ export default function Dashboard() {
               )}
 
               {/* Members pill */}
-              <div className="flex items-center gap-1.5 ml-auto mr-0 sm:mr-0">
+              <div className="flex items-center gap-1.5 ml-auto">
                 {members.slice(0, 5).map(m => (
                   <div
                     key={m.socketId}
@@ -614,9 +698,7 @@ export default function Dashboard() {
                     {initials(m.username)}
                   </div>
                 ))}
-                {members.length > 5 && (
-                  <span className="text-xs text-muzix-muted">+{members.length - 5}</span>
-                )}
+                {members.length > 5 && <span className="text-xs text-muzix-muted">+{members.length - 5}</span>}
                 <span className="text-xs text-muzix-muted ml-1">{members.length} online</span>
               </div>
             </div>
