@@ -16,6 +16,7 @@ export default function Signup() {
     setError("");
     setLoading(true);
     try {
+      console.log("URL", API);
       await axios.post(`${API}/api/auth/signup`, {
         username: userName,
         email,
