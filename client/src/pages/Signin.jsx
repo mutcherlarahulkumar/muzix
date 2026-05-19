@@ -2,26 +2,32 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API = "https://muzix-xbhz.onrender.com";
 
 export default function Signin() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSignin = async () => {
-    setError('');
+    setError("");
     setLoading(true);
     try {
-      const res = await axios.post(`${API}/api/auth/signin`, { email, password });
+      const res = await axios.post(`${API}/api/auth/signin`, {
+        email,
+        password,
+      });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("userId", res.data.userId);
       localStorage.setItem("username", res.data.username);
-      navigate('/home');
+      navigate("/home");
     } catch (err) {
-      setError(err.response?.data?.message || 'Sign in failed. Check your credentials.');
+      setError(
+        err.response?.data?.message ||
+          "Sign in failed. Check your credentials.",
+      );
     } finally {
       setLoading(false);
     }
@@ -36,10 +42,19 @@ export default function Signin() {
         <div className="bg-muzix-card border border-white/8 rounded-2xl p-8 shadow-card backdrop-blur-xl">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-black mb-1" style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <h1
+              className="text-3xl font-black mb-1"
+              style={{
+                background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
               MuZix
             </h1>
-            <p className="text-slate-400 text-sm">Welcome back — sign in to continue</p>
+            <p className="text-slate-400 text-sm">
+              Welcome back — sign in to continue
+            </p>
           </div>
 
           {/* Error */}
@@ -52,7 +67,9 @@ export default function Signin() {
           {/* Fields */}
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                Email
+              </label>
               <input
                 type="email"
                 placeholder="you@example.com"
@@ -61,12 +78,14 @@ export default function Signin() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Password</label>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                Password
+              </label>
               <input
                 type="password"
                 placeholder="Your password"
                 className="w-full px-4 py-3 rounded-xl bg-muzix-surface border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-muzix-purple focus:ring-1 focus:ring-muzix-purple/50 transition-all"
-                onKeyDown={(e) => e.key === 'Enter' && handleSignin()}
+                onKeyDown={(e) => e.key === "Enter" && handleSignin()}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
@@ -77,15 +96,18 @@ export default function Signin() {
             onClick={handleSignin}
             disabled={loading}
             className="mt-6 w-full py-3.5 rounded-xl font-bold text-white text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-neon-purple disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)' }}
+            style={{ background: "linear-gradient(135deg, #8b5cf6, #ec4899)" }}
           >
-            {loading ? 'Signing in…' : 'Sign In'}
+            {loading ? "Signing in…" : "Sign In"}
           </button>
 
           {/* Footer */}
           <p className="text-center text-sm text-slate-500 mt-5">
-            Don&apos;t have an account?{' '}
-            <button onClick={() => navigate('/signup')} className="text-muzix-purple hover:text-muzix-pink font-semibold transition-colors">
+            Don&apos;t have an account?{" "}
+            <button
+              onClick={() => navigate("/signup")}
+              className="text-muzix-purple hover:text-muzix-pink font-semibold transition-colors"
+            >
               Create one
             </button>
           </p>
