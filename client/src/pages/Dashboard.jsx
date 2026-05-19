@@ -3,8 +3,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import SongCard from "../components/SongCard";
-
-const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
+import { API } from "../config";
 
 const STUN = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }] };
 

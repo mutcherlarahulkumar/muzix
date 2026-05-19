@@ -1,8 +1,7 @@
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-
-const API = "https://muzix-xbhz.onrender.com";
+import { API } from "../config";
 
 export default function Createroom() {
   const navigate = useNavigate();

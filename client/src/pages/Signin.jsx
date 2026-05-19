@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-
-const API = "https://muzix-xbhz.onrender.com";
+import { API } from "../config";
 
 export default function Signin() {
   const navigate = useNavigate();
