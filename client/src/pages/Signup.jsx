@@ -2,62 +2,103 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
+const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
 export default function Signup() {
-    const navigate = useNavigate();
-    const [userName, setUserName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    return <div className="h-full flex  py-12">
-        <div className="h-full flex flex-col justify-center w-full max-w-md mx-auto bg-white shadow-md rounded-lg p-6 items-center m-12 py-9">
-            <div className="text-3xl text-center p-5 font-bold">Sign Up</div>
-            <div className="flex flex-col items-center p-2">
-                <div className="w-full">
+  const navigate = useNavigate();
+  const [userName, setUserName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-                    <div className="mb-4">
-                        <label htmlFor="username" className="block text-sm font-medium text-gray-700">User Name</label>
-                        <input type="text" id="username" name="username" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onChange={(e)=>{
-                            setUserName(e.target.value);
-                        }} required/>
-                    </div>
+  const handleSignup = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await axios.post(`${API}/api/auth/signup`, { username: userName, email, password });
+      navigate('/signin');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Signup failed. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                    <div className="mb-4">
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
-                        <input type="email" name="email" id="email" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onChange={(e)=>{
-                            setEmail(e.target.value);
-                        }} required/>
-                    </div>
+  return (
+    <div className="min-h-screen bg-muzix-bg flex items-center justify-center px-4 relative overflow-hidden">
+      <div className="absolute top-1/3 -left-24 w-80 h-80 bg-muzix-purple rounded-full opacity-10 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-24 w-80 h-80 bg-muzix-pink rounded-full opacity-10 blur-3xl pointer-events-none" />
 
-                    <div className="mb-4">
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-                        <input type="password" name="password" id="password" className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" onChange={(e)=>{
-                            setPassword(e.target.value);
-                        }} required/>
-                    </div>
+      <div className="relative z-10 w-full max-w-md">
+        {/* Card */}
+        <div className="bg-muzix-card border border-white/8 rounded-2xl p-8 shadow-card backdrop-blur-xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-black mb-1" style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              MuZix
+            </h1>
+            <p className="text-slate-400 text-sm">Create your account to get started</p>
+          </div>
 
-                    <div>
-                        <button className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" onClick={()=>{
-                            //signup logic
-
-                            axios.post('http://localhost:3000/api/auth/signup',{
-                                username : userName,
-                                email : email,
-                                password : password
-                            })
-                            .then((response)=>{
-                                console.log(response.data);
-                                // localStorage.setItem("token",response.data.token);
-                                navigate('/signin');
-                            })
-                            .catch((error)=>{
-                                console.log(error.response.data);
-                            })
-
-                            
-                        }}>Sign Up</button>
-                    </div>
-
-                </div>
+          {/* Error */}
+          {error && (
+            <div className="mb-5 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              {error}
             </div>
+          )}
+
+          {/* Fields */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Username</label>
+              <input
+                type="text"
+                placeholder="your_username"
+                className="w-full px-4 py-3 rounded-xl bg-muzix-surface border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-muzix-purple focus:ring-1 focus:ring-muzix-purple/50 transition-all"
+                onChange={(e) => setUserName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Email</label>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 rounded-xl bg-muzix-surface border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-muzix-purple focus:ring-1 focus:ring-muzix-purple/50 transition-all"
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Password</label>
+              <input
+                type="password"
+                placeholder="Min 6 characters"
+                className="w-full px-4 py-3 rounded-xl bg-muzix-surface border border-white/10 text-white placeholder-slate-600 text-sm focus:outline-none focus:border-muzix-purple focus:ring-1 focus:ring-muzix-purple/50 transition-all"
+                onKeyDown={(e) => e.key === 'Enter' && handleSignup()}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Submit */}
+          <button
+            onClick={handleSignup}
+            disabled={loading}
+            className="mt-6 w-full py-3.5 rounded-xl font-bold text-white text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-neon-purple disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)' }}
+          >
+            {loading ? 'Creating account…' : 'Create Account'}
+          </button>
+
+          {/* Footer */}
+          <p className="text-center text-sm text-slate-500 mt-5">
+            Already have an account?{' '}
+            <button onClick={() => navigate('/signin')} className="text-muzix-purple hover:text-muzix-pink font-semibold transition-colors">
+              Sign in
+            </button>
+          </p>
         </div>
+      </div>
     </div>
+  );
 }

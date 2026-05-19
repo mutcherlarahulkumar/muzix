@@ -3,7 +3,7 @@ import {User,Room,Song} from "../db.js";
 import { authMiddleware } from "./auth.js";
 import { fetchVideoDetails } from "./yt.js";
 
-export const router = express();
+export const router = express.Router();
 
 router.post('/create',authMiddleware,async(req,res)=>{
     //create logic -> ask for the room name and create an priority queue for that 
@@ -89,7 +89,7 @@ router.post('/rooms/:roomId/songs',authMiddleware,async(req,res)=>{
       return res.status(403).json({ message: "Only admin can add songs" });
     }
 
-    const newSong = new Song({ thumburl,title, link, upvotes: 0 });
+    const newSong = new Song({ thumburl, title, link, upvotes: 0, addedBy: req.userId });
     await newSong.save();
 
     room.songs.push(newSong._id);

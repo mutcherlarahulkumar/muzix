@@ -1,22 +1,36 @@
+import 'dotenv/config';
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
-import {router as rootRouter} from "./routes/server.js";
+import { router as rootRouter } from "./routes/server.js";
 
 const app = express();
-app.use(cors());
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : ["http://localhost:5173"];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 
-mongoose.connect('mongodb+srv://rahul:hDzJYkAenZIbyQLR@cluster0.qkwlpub.mongodb.net/').then(() => {
-    console.log("Connected to MongoDB");
-  }).catch((error) => {
-    console.error("Error connecting to MongoDB:", error.message);
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((error) => {
+    console.error("MongoDB connection error:", error.message);
+    process.exit(1);
   });
 
-//Navigating to API
+app.use("/api", rootRouter);
 
-app.use('/api',rootRouter);
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-app.listen(3000,()=>{
-    console.log("The server is running on port 3000");
-})
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

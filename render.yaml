@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: muzix-backend
+    env: node
+    region: oregon
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: MONGODB_URI
+        sync: false   # Set this in the Render dashboard → Environment
+      - key: JWT_SECRET
+        sync: false   # Set this in the Render dashboard → Environment
+      - key: YOUTUBE_API_KEY
+        sync: false   # Set this in the Render dashboard → Environment
+      - key: ALLOWED_ORIGINS
+        sync: false   # e.g. https://<username>.github.io
