@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import { setIO } from './socketInstance.js';
+import { Room, Song } from './db.js';
 
 // In-memory state (clears on server restart — fine for now)
 const roomMembers = new Map();   // roomId → Map(socketId → { userId, username, socketId })
@@ -52,6 +54,24 @@ export function initSocket(io) {
       history.push(msg);
       if (history.length > 200) history.splice(0, history.length - 200);
       io.to(currentRoomId).emit('chat:message', msg);
+    });
+
+    // ── Song finished — remove from queue, everyone auto-advances ───────────
+    socket.on('song:finished', async ({ songId, roomId }) => {
+      if (!songId || !roomId) return;
+      try {
+        const oid = new mongoose.Types.ObjectId(songId);
+        // Remove from Room's songs array
+        await Room.findByIdAndUpdate(roomId, { $pull: { songs: oid } });
+        // Delete the Song document itself — it's been played, no need to keep it
+        await Song.findByIdAndDelete(oid);
+        // Tell every client in the room to drop it from their queue
+        io.to(roomId).emit('song:removed', { songId });
+        // Clear playback state so the next song starts from 0:00
+        roomPlayback.delete(roomId);
+      } catch (err) {
+        console.error('song:finished error', err.message);
+      }
     });
 
     // ── Playback sync (admin emits, others receive) ──────────────────────────
