@@ -224,6 +224,7 @@ export function initSocket(io) {
       io.to(currentRoomId).emit('reaction:broadcast', {
         socketId: socket.id,
         userId: currentUser.userId,
+        username: currentUser.username,
         emoji,
         id: `${Date.now()}-${Math.random().toString(36).slice(2,5)}`,
       });

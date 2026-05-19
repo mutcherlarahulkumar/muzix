@@ -312,9 +312,10 @@ export default function Dashboard() {
   const [showLeader,  setShowLeader]  = useState(false);
   const [xpToast,     setXpToast]     = useState(null);
   const [sidePanel,   setSidePanel]   = useState(null); // null | 'chat' | 'tasks'
+  const [showQueue,   setShowQueue]   = useState(false); // mobile queue drawer
 
-  // Emoji reactions: socketId → [{ id, emoji }]
-  const [reactions,     setReactions]     = useState({});
+  // Emoji reactions: flat list of { id, emoji, username, socketId, left }
+  const [reactions,     setReactions]     = useState([]);
   const [showEmojiBar,  setShowEmojiBar]  = useState(false);
 
   const socketRef      = useRef(null);
@@ -427,11 +428,12 @@ export default function Dashboard() {
     socket.on("task:list",       setTasks);
     socket.on("room:leaderboard", setLeaderboard);
 
-    // Emoji reactions — auto-expire after 2.8s
-    socket.on("reaction:broadcast", ({ socketId, emoji, id }) => {
-      const left = 15 + Math.random() * 65; // compute once, not in render
-      setReactions(r => ({ ...r, [socketId]: [...(r[socketId] || []), { id, emoji, left }] }));
-      setTimeout(() => setReactions(r => ({ ...r, [socketId]: (r[socketId] || []).filter(x => x.id !== id) })), 2800);
+    // Emoji reactions — store flat, expire after 2.8s
+    socket.on("reaction:broadcast", ({ socketId, username: rUser, emoji, id }) => {
+      const left = 10 + Math.random() * 80;
+      const entry = { id, emoji, username: rUser, socketId, left };
+      setReactions(r => [...r, entry]);
+      setTimeout(() => setReactions(r => r.filter(x => x.id !== id)), 2800);
     });
 
     // WebRTC
@@ -497,13 +499,15 @@ export default function Dashboard() {
         playerVars: { autoplay: isAdminRef.current ? 1 : 0, rel: 0, modestbranding: 1, controls: 1 },
         events: {
           onStateChange: (ev) => {
-            if (!isAdminRef.current || isSyncingRef.current) return;
+            if (!isAdminRef.current) return;
             const s = ev.data;
-            if (s === 0) {
+            if (s === 1 || s === 2) {
+              // Always let admin's own play/pause emit — never block with isSyncingRef
+              socketRef.current?.emit("playback:update", { videoId: currentVidRef.current, currentTime: playerRef.current.getCurrentTime(), playing: s === 1 });
+            } else if (s === 0 && !isSyncingRef.current) {
+              // Only detect song-end when not in a loading transition (avoids false triggers)
               const finishedId = songsRef.current[0]?._id;
               if (finishedId) socketRef.current?.emit("song:finished", { songId: finishedId, roomId: room_id });
-            } else if (s === 1 || s === 2) {
-              socketRef.current?.emit("playback:update", { videoId: currentVidRef.current, currentTime: playerRef.current.getCurrentTime(), playing: s === 1 });
             }
           },
         },
@@ -663,15 +667,24 @@ export default function Dashboard() {
           <div className="flex-1 flex gap-3 p-3 overflow-hidden min-h-0">
 
             {/* Stage */}
-            <div className="flex-1 min-h-0 min-w-0">
+            <div className="flex-1 min-h-0 min-w-0 relative">
+              {/* Emoji reaction overlay — always visible, floats over stage content */}
+              <div className="absolute inset-0 pointer-events-none z-20">
+                {reactions.map(r => (
+                  <div key={r.id} className="reaction-float flex flex-col items-center gap-0.5" style={{ left: `${r.left}%`, bottom: "15%" }}>
+                    <span className="text-3xl">{r.emoji}</span>
+                    <span className="text-[9px] text-white/70 font-semibold bg-black/40 px-1.5 py-0.5 rounded-full whitespace-nowrap">{r.username}</span>
+                  </div>
+                ))}
+              </div>
               {isPeerStage && peers[peerId] && (
                 <div className="h-full relative rounded-2xl overflow-hidden bg-black border border-white/8">
-                  <VideoTile stream={peers[peerId].stream} username={peers[peerId].username} deafened={deafened} large reactions={reactions[peerId] || []} />
+                  <VideoTile stream={peers[peerId].stream} username={peers[peerId].username} deafened={deafened} large reactions={reactions.filter(r => r.socketId === peerId)} />
                 </div>
               )}
               {stage === 'peer:self' && localStream && (
                 <div className="h-full relative rounded-2xl overflow-hidden bg-black border border-white/8">
-                  <VideoTile stream={localStream} username={username} local large reactions={reactions[mySocketId] || []} />
+                  <VideoTile stream={localStream} username={username} local large reactions={reactions.filter(r => r.socketId === mySocketId)} />
                 </div>
               )}
               {stage === 'pomodoro' && (
@@ -719,7 +732,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Queue — hidden on small screens */}
+            {/* Queue — sidebar on desktop, hidden on mobile (accessible via bottom drawer) */}
             <div className="bg-muzix-card border border-white/8 rounded-2xl p-3 flex-col overflow-hidden flex-shrink-0 w-48 sm:w-56 lg:w-64 hidden sm:flex">
               <div className="flex-shrink-0 flex items-center justify-between mb-2">
                 <span className="text-[10px] font-semibold text-muzix-muted uppercase tracking-widest">Queue</span>
@@ -758,12 +771,12 @@ export default function Dashboard() {
                 <div className="flex items-center gap-1 overflow-x-auto max-w-[35vw] flex-shrink-0">
                   {localStream && (
                     <div onClick={() => pinStage('peer:self')} className="cursor-pointer rounded-xl ring-transparent hover:ring-2 ring-muzix-purple transition-all flex-shrink-0">
-                      <VideoTile stream={localStream} username={username} local reactions={reactions[mySocketId] || []} />
+                      <VideoTile stream={localStream} username={username} local reactions={reactions.filter(r => r.socketId === mySocketId)} />
                     </div>
                   )}
                   {peerList.slice(0,3).map(([id, { stream, username: pu }]) => (
                     <div key={id} onClick={() => pinStage(`peer:${id}`)} className="cursor-pointer rounded-xl ring-transparent hover:ring-2 ring-muzix-purple transition-all flex-shrink-0">
-                      <VideoTile stream={stream} username={pu} deafened={deafened} reactions={reactions[id] || []} />
+                      <VideoTile stream={stream} username={pu} deafened={deafened} reactions={reactions.filter(r => r.socketId === id)} />
                     </div>
                   ))}
                   {peerList.length > 3 && (
@@ -813,6 +826,13 @@ export default function Dashboard() {
                   ))}
                   {members.length > 4 && <span className="ml-1 text-[10px] text-muzix-muted">+{members.length-4}</span>}
                 </div>
+                {/* Mobile-only queue button */}
+                <button onClick={() => setShowQueue(q => !q)} title="Queue"
+                  className={`relative w-8 h-8 rounded-xl flex items-center justify-center border transition-all text-sm sm:hidden
+                    ${showQueue?"bg-muzix-purple/20 border-muzix-purple/40":"bg-white/5 border-white/10 hover:bg-white/10"}`}>
+                  🎵
+                  {songs.length > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-muzix-purple rounded-full text-[8px] font-bold flex items-center justify-center">{songs.length}</span>}
+                </button>
                 <button onClick={() => toggleSide('tasks')} title="Tasks"
                   className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all text-sm sm:hidden
                     ${sidePanel==='tasks'?"bg-muzix-purple/20 border-muzix-purple/40":"bg-white/5 border-white/10 hover:bg-white/10"}`}>
@@ -826,6 +846,41 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* ── Mobile queue drawer (sm:hidden) ─────────────────────────────────── */}
+        {showQueue && (
+          <div className="fixed inset-0 z-40 sm:hidden" onClick={() => setShowQueue(false)}>
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <div className="absolute bottom-0 left-0 right-0 bg-muzix-card border-t border-white/10 rounded-t-2xl max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/8">
+                <div>
+                  <span className="font-bold text-sm">Song Queue</span>
+                  <span className="ml-2 text-[10px] text-muzix-muted">{songs.length} song{songs.length!==1?"s":""}</span>
+                </div>
+                <button onClick={() => setShowQueue(false)} className="text-slate-500 hover:text-white text-xl leading-none">×</button>
+              </div>
+              {isAdmin && (
+                <div className="flex-shrink-0 px-3 pt-2 pb-1">
+                  <div className="flex gap-2">
+                    <input value={link} placeholder="Paste YouTube URL…" onChange={e => setLink(e.target.value)} onKeyDown={e => e.key==="Enter" && handleAddSong()}
+                      className="flex-1 px-3 py-2 rounded-xl bg-muzix-surface border border-white/10 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-muzix-purple min-w-0" />
+                    <button onClick={handleAddSong} disabled={adding || !link.trim()}
+                      className="px-3 py-2 rounded-xl font-bold text-sm text-white disabled:opacity-40 flex-shrink-0"
+                      style={{ background:"linear-gradient(135deg,#8b5cf6,#ec4899)" }}>
+                      {adding ? "…" : "+"}
+                    </button>
+                  </div>
+                  {addError && <p className="mt-1 text-xs text-red-400">{addError}</p>}
+                </div>
+              )}
+              <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+                {songs.length === 0
+                  ? <div className="flex flex-col items-center justify-center py-8"><span className="text-3xl mb-2">🎶</span><p className="text-slate-500 text-sm">No songs yet</p></div>
+                  : songs.map((s,i) => <MemoSongCard key={s._id} item={s} rank={i+1} token={token} roomId={room_id} />)}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Side panel ──────────────────────────────────────────────────────── */}
         <div className={`flex-shrink-0 flex flex-col border-l border-white/8 bg-muzix-surface transition-all duration-200 ${sidePanel ? "w-72 sm:w-80" : "w-0 overflow-hidden"}`}>

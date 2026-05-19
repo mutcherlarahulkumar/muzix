@@ -103,7 +103,8 @@ router.post('/rooms/:roomId/songs/:songId/upvote', authMiddleware, async (req, r
   try {
     const song = await Song.findById(songId);
     if (!song) return res.status(404).json({ message: "Song not found" });
-    if (song.voters.includes(req.userId)) {
+    const alreadyVoted = song.voters.some(v => v.toString() === req.userId.toString());
+    if (alreadyVoted) {
       return res.status(400).json({ message: "You have already upvoted this song" });
     }
 
