@@ -1,5 +1,5 @@
 import express from "express";
-import { User, Room, Song } from "../db.js";
+import { User, Room, Song, Template } from "../db.js";
 import { authMiddleware } from "./auth.js";
 import { fetchVideoDetails } from "./yt.js";
 import { getIO } from "../socketInstance.js";
@@ -122,6 +122,36 @@ router.post('/rooms/:roomId/songs/:songId/upvote', authMiddleware, async (req, r
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
+});
+
+router.get('/leaderboard', authMiddleware, async (req, res) => {
+  try {
+    const users = await User.find({}, 'username xp weeklyXp studySessions').sort({ xp: -1 }).limit(20);
+    res.json(users);
+  } catch { res.status(500).json({ message: 'Server error' }); }
+});
+
+router.get('/rooms/:roomId/templates', authMiddleware, async (req, res) => {
+  try {
+    const templates = await Template.find({ roomId: req.params.roomId }).sort({ createdAt: -1 });
+    res.json(templates);
+  } catch { res.status(500).json({ message: 'Server error' }); }
+});
+
+router.post('/rooms/:roomId/templates', authMiddleware, async (req, res) => {
+  const { name, tasks } = req.body;
+  if (!name || !tasks?.length) return res.status(400).json({ message: 'Name and tasks required' });
+  try {
+    const t = await Template.create({ name, tasks, createdBy: req.userId, roomId: req.params.roomId });
+    res.status(201).json(t);
+  } catch { res.status(500).json({ message: 'Server error' }); }
+});
+
+router.delete('/rooms/:roomId/templates/:templateId', authMiddleware, async (req, res) => {
+  try {
+    await Template.findOneAndDelete({ _id: req.params.templateId, roomId: req.params.roomId });
+    res.json({ message: 'Deleted' });
+  } catch { res.status(500).json({ message: 'Server error' }); }
 });
 
 router.get("/rooms/:roomId/next-song", authMiddleware, async (req, res) => {

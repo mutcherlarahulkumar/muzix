@@ -6,7 +6,11 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   createdRooms: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Room' }],
-  joinedRooms: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Room' }]
+  joinedRooms: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Room' }],
+  xp: { type: Number, default: 0 },
+  weeklyXp: { type: Number, default: 0 },
+  weeklyXpReset: { type: Date, default: null },
+  studySessions: { type: Number, default: 0 },
 });
 
 const roomSchema = new mongoose.Schema({
@@ -29,8 +33,14 @@ const songSchema = new mongoose.Schema({
   voters: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
 });
 
+const templateSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  tasks: [String],
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  roomId: { type: mongoose.Schema.Types.ObjectId, ref: 'Room' },
+}, { timestamps: true });
+
 export const User = mongoose.model('User', userSchema);
 export const Room = mongoose.model('Room', roomSchema);
 export const Song = mongoose.model('Song', songSchema);
-
-// module.exports = { User, Room, Song };
+export const Template = mongoose.model('Template', templateSchema);
