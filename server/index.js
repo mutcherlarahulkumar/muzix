@@ -2,7 +2,10 @@ import 'dotenv/config';
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import { router as rootRouter } from "./routes/server.js";
+import { initSocket } from './socket.js';
 
 const app = express();
 
@@ -29,8 +32,19 @@ mongoose
   });
 
 app.use("/api", rootRouter);
-
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
+initSocket(io);
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`));
