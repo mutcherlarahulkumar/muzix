@@ -1,3 +1,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes floatUp {
+  0%   { opacity: 1;   transform: translateY(0)    scale(1); }
+  70%  { opacity: 0.9; transform: translateY(-60px) scale(1.3); }
+  100% { opacity: 0;   transform: translateY(-90px) scale(0.9); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px) translateX(-50%); }
+  to   { opacity: 1; transform: translateY(0)    translateX(-50%); }
+}
+
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.7); }
+  80%  { transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.reaction-float {
+  animation: floatUp 2.8s ease-out forwards;
+  pointer-events: none;
+  position: absolute;
+  font-size: 1.6rem;
+  z-index: 30;
+  will-change: transform, opacity;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out both;
+}
+
+.animate-pop-in {
+  animation: popIn 0.2s ease-out both;
+}

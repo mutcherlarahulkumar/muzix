@@ -14,13 +14,13 @@ const userSchema = new mongoose.Schema({
 });
 
 const roomSchema = new mongoose.Schema({
-  // roomId: { type: String, required: true, unique: true },
   roomName: { type: String, required: true },
   admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   users: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   songs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Song' }],
   currentSong: { type: mongoose.Schema.Types.ObjectId, ref: 'Song' },
-  songQueue: [{ songId: { type: mongoose.Schema.Types.ObjectId, ref: 'Song' }, upvotes: { type: Number } }]
+  songQueue: [{ songId: { type: mongoose.Schema.Types.ObjectId, ref: 'Song' }, upvotes: { type: Number } }],
+  lastActive: { type: Date, default: Date.now },
 });
 
 const songSchema = new mongoose.Schema({
