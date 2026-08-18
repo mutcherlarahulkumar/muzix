@@ -81,7 +81,27 @@ jobs:
       # The App Service must be a Linux "Web App for Containers" plan, and if
       # the GHCR package is private it needs DOCKER_REGISTRY_SERVER_* app
       # settings so Azure can pull it.
+      #
+      # Until both secrets exist the deploy is skipped with a warning instead of
+      # failing. The image is already built, tested and pushed to GHCR by the
+      # job above — that part is real whether or not an Azure subscription is
+      # attached, and it shouldn't show up as a broken build. The secrets
+      # context isn't available in a job-level `if:`, so this has to be a step.
+      - name: Check for Azure credentials
+        id: creds
+        env:
+          APP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        run: |
+          if [ -n "$APP_NAME" ] && [ -n "$PUBLISH_PROFILE" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Skipping Azure deploy — set AZURE_WEBAPP_NAME and AZURE_WEBAPP_PUBLISH_PROFILE to enable it. The image is on GHCR either way."
+          fi
+
       - id: deploy
+        if: steps.creds.outputs.ready == 'true'
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
