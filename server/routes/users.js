@@ -3,6 +3,7 @@ import { User, Room, Song, Template } from "../db.js";
 import { authMiddleware } from "./auth.js";
 import { fetchVideoDetails } from "./yt.js";
 import { getIO } from "../socketInstance.js";
+import { orderQueue, QUEUE_SORT } from "../queue.js";
 
 export const router = express.Router();
 
@@ -90,7 +91,7 @@ router.get('/rooms/:roomId/songs', authMiddleware, async (req, res) => {
     const songs = await Song.aggregate([
       { $match: { _id: { $in: (await Room.findById(roomId)).songs } } },
       { $project: { title: 1, link: 1, upvotes: 1, voters: 1, thumburl: 1 } },
-      { $sort: { upvotes: -1 } },
+      { $sort: QUEUE_SORT },
     ]);
     res.status(200).json(songs);
   } catch (error) {
@@ -160,7 +161,7 @@ router.get("/rooms/:roomId/next-song", authMiddleware, async (req, res) => {
   try {
     const room = await Room.findById(roomId).populate("songs");
     if (!room) return res.status(404).json({ message: "Room not found" });
-    const nextSong = room.songs.sort((a, b) => b.upvotes - a.upvotes)[0];
+    const nextSong = orderQueue(room.songs)[0];
     if (!nextSong) return res.status(404).json({ message: "No songs in the queue" });
     res.status(200).json(nextSong);
   } catch (error) {

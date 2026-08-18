@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: muzix-server
+  labels: { app: muzix-server }
+spec:
+  type: LoadBalancer
+  # Socket.IO starts on HTTP long-polling before upgrading to WebSocket, and
+  # both halves of that handshake have to reach the same pod. Without affinity
+  # the upgrade fails intermittently and clients silently fall back to polling.
+  sessionAffinity: ClientIP
+  selector:
+    app: muzix-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
